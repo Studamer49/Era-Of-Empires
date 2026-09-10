@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Era of Empires - Settings</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="landing">
+        <nav class="landing-nav">
+            <span class="brand">Era of Empires</span>
+            <a href="index.html">Home</a>
+            <a href="game.html">Game</a>
+            <a href="settings.html">Settings</a>
+            <a href="about.html">About</a>
+        </nav>
+        <div class="settings-container">
+            <h1 style="font-size:24px;color:var(--accent2);margin-bottom:20px;">Settings</h1>
+            <div class="settings-group">
+                <h2>Sound</h2>
+                <label for="master-volume">Master Volume</label>
+                <input type="range" id="master-volume" min="0" max="100" value="80">
+                <label for="music-volume">Music Volume</label>
+                <input type="range" id="music-volume" min="0" max="100" value="50">
+                <label for="sfx-volume">SFX Volume</label>
+                <input type="range" id="sfx-volume" min="0" max="100" value="70">
+            </div>
+            <div class="settings-group">
+                <h2>Graphics</h2>
+                <label for="resolution">Resolution</label>
+                <select id="resolution">
+                    <option>1920x1080</option>
+                    <option>1280x720</option>
+                    <option>800x600</option>
+                </select>
+                <label for="shadow-quality">Shadow Quality</label>
+                <select id="shadow-quality">
+                    <option>High</option>
+                    <option>Medium</option>
+                    <option>Low</option>
+                </select>
+            </div>
+            <div class="settings-group">
+                <h2>Game Data</h2>
+                <label>Manage your saved game data</label>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                    <button class="btn btn-sm btn-accent" onclick="exportData()">Export Data</button>
+                    <button class="btn btn-sm btn-danger" onclick="if(confirm('Reset all game data?')){localStorage.removeItem('era-of-empires-game-state');alert('Data cleared.');}">Reset All Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function exportData(){
+            const data=localStorage.getItem('era-of-empires-game-state');
+            if(!data){alert('No game data found.');return;}
+            const blob=new Blob([data],{type:'application/json'});
+            const url=URL.createObjectURL(blob);
+            const a=document.createElement('a');
+            a.href=url;a.download='era-of-empires-data.json';a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
