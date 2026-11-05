@@ -1,0 +1,12 @@
+{
+  "name": "eraofempires",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Era of Empires - strategy game management tool",
+  "scripts": {
+    "dev": "serve -l 5173 ."
+  },
+  "devDependencies": {
+    "serve": "^14.2.4"
+  }
+}
