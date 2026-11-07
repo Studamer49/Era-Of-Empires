@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Era of Empires - Gameplay</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .game-map-viewport { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <nav class="site-nav">
+            <a href="menu.html">Main Menu</a>
+            <a href="settings.html">Settings</a>
+        </nav>
+    </header>
+    <div class="game-shell">
+        <header class="game-header">
+            <div class="game-country">
+                <span class="flag" id="play-flag">🏁</span>
+                <div>
+                    <h1 id="play-country-name" data-tutorial-target="your-country">Country</h1>
+                    <div class="sub" id="play-country-sub"></div>
+                </div>
+            </div>
+            <div class="game-stats">
+                <span>Turn <b id="play-turn">1</b></span>
+                <span>Year <b id="play-year">1800</b></span>
+            </div>
+        </header>
+
+        <div class="game-body">
+            <div class="game-map">
+                <div class="game-map-viewport" id="game-map"></div>
+                <div class="map-hint" style="position:absolute;left:12px;bottom:12px;background:rgba(22,24,34,0.85);padding:6px 10px;border-radius:var(--radius);font-size:11px;color:var(--text2);border:1px solid var(--border);pointer-events:none" id="map-hint-target">Your nation is highlighted on the map</div>
+            </div>
+            <div class="game-panel">
+                <div class="resource-dashboard" id="resource-dashboard-target" data-tutorial-target="national-resources">
+                    <h3>National Resources</h3>
+                    <div class="resource-grid">
+                        <div class="resource-item"><div class="name">Treasury</div><div class="amount pos" id="res-treasury">0</div></div>
+                        <div class="resource-item"><div class="name">Food</div><div class="amount pos" id="res-food">0</div></div>
+                        <div class="resource-item"><div class="name">Oil</div><div class="amount pos" id="res-oil">0</div></div>
+                        <div class="resource-item"><div class="name">Steel</div><div class="amount pos" id="res-steel">0</div></div>
+                        <div class="resource-item"><div class="name">Gold</div><div class="amount pos" id="res-gold">0</div></div>
+                        <div class="resource-item"><div class="name">Population</div><div class="amount pos" id="res-pop">0</div></div>
+                    </div>
+                </div>
+                <div class="stat-card" id="economy-card-target" data-tutorial-target="economy">
+                    <h4>Economy</h4>
+                    <div class="resource-row"><span class="label">Economic strength</span><span class="value" id="res-econ">0</span></div>
+                    <p style="font-size:11px;color:var(--text2);margin:8px 0 0 0">Higher economic strength increases income each turn.</p>
+                </div>
+                <div class="stat-card" id="military-card-target" data-tutorial-target="military">
+                    <h4>Military</h4>
+                    <div class="resource-row"><span class="label">Military strength</span><span class="value" id="res-mil">0</span></div>
+                    <p style="font-size:11px;color:var(--text2);margin:8px 0 0 0">Military strength supports territorial expansion and defence.</p>
+                </div>
+                <div class="stat-card" id="diplomacy-card-target" data-tutorial-target="diplomacy">
+                    <h4>Diplomacy</h4>
+                    <button class="btn btn-secondary" id="btn-diplomacy" disabled>Diplomacy (coming soon)</button>
+                    <p style="font-size:11px;color:var(--text2);margin:8px 0 0 0">Alliances, trade and peace agreements will be available in a future update.</p>
+                </div>
+                <div class="game-actions">
+                    <button class="btn btn-secondary" id="btn-end-turn" data-tutorial-target="end-turn" disabled>End Turn</button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="game-footer">
+            <div>Era of Empires &bull; Single Player</div>
+            <div class="menu-actions" style="gap:8px">
+                <button class="btn" id="btn-tutorial-replay">Tutorial</button>
+                <button class="btn btn-danger" id="btn-game-logout">Logout</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Tutorial overlay -->
+    <div class="tutorial-wrap" id="tutorial-wrap">
+        <div class="tutorial-backdrop"></div>
+        <div class="tutorial-highlight" id="tutorial-highlight"></div>
+        <div class="tutorial-dialog" id="tutorial-dialog">
+            <div class="tutorial-stage-pill" id="tutorial-pill">Stage 1 of 8</div>
+            <h3 id="tutorial-title">Welcome</h3>
+            <p id="tutorial-body">Introduce Era of Empires.</p>
+            <div class="tutorial-controls">
+                <button class="btn" id="tutorial-prev">Previous</button>
+                <button class="btn btn-accent" id="tutorial-next">Next</button>
+            </div>
+        </div>
+        <button class="tutorial-skip" id="tutorial-skip">Skip Tutorial</button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="module">
+        import { WorldMap } from './js/worldmap.js';
+        window.WorldMap = WorldMap;
+    </script>
+    <script src="js/api.js"></script>
+    <script src="js/tutorial.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = urlParams.get('id');
+
+        // DOM
+        const elFlag = document.getElementById('play-flag');
+        const elName = document.getElementById('play-country-name');
+        const elSub = document.getElementById('play-country-sub');
+        const elTurn = document.getElementById('play-turn');
+        const elYear = document.getElementById('play-year');
+        const resTreasury = document.getElementById('res-treasury');
+        const resFood = document.getElementById('res-food');
+        const resOil = document.getElementById('res-oil');
+        const resSteel = document.getElementById('res-steel');
+        const resGold = document.getElementById('res-gold');
+        const resPop = document.getElementById('res-pop');
+        const resEcon = document.getElementById('res-econ');
+        const resMil = document.getElementById('res-mil');
+        const btnEndTurn = document.getElementById('btn-end-turn');
+        const btnDiplomacy = document.getElementById('btn-diplomacy');
+        const btnLogout = document.getElementById('btn-game-logout');
+        const btnTutorialReplay = document.getElementById('btn-tutorial-replay');
+        const toast = document.getElementById('toast');
+
+        let worldMap;
+        let myCountry = null;
+
+        function showToast(msg, kind) {
+            toast.textContent = msg;
+            toast.className = 'toast' + (kind ? ' ' + kind : '');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        async function load() {
+            try {
+                const data = await window.EOE.api.get('/api/games/' + gameId + '/play');
+                myCountry = data.country;
+                elFlag.textContent = myCountry.flag || '🏁';
+                elName.textContent = myCountry.name;
+                elSub.textContent = myCountry.code + ' &bull; ' + (myCountry.description || '');
+                elTurn.textContent = data.game.currentTurn;
+                elYear.textContent = data.game.currentYear;
+                resTreasury.textContent = (myCountry.treasury || 0).toLocaleString();
+                resFood.textContent = (myCountry.food || 0).toLocaleString();
+                resOil.textContent = (myCountry.oil || 0).toLocaleString();
+                resSteel.textContent = (myCountry.steel || 0).toLocaleString();
+                resGold.textContent = (myCountry.gold || 0).toLocaleString();
+                resPop.textContent = (myCountry.population || 0).toLocaleString() + 'M';
+                resEcon.textContent = myCountry.economicStrength || 0;
+                resMil.textContent = myCountry.militaryStrength || 0;
+                if (window.EOE.tutorial) window.EOE.tutorial.setCountryName(myCountry.name);
+                btnEndTurn.disabled = false;
+                btnEndTurn.textContent = 'End Turn';
+                initMap();
+                // Start tutorial if enabled and not completed
+                const t = await window.EOE.api.get('/api/tutorial?gameId=' + gameId);
+                if (t.progress && t.progress.completed) {
+                    // tutorial done
+                } else {
+                    window.EOE.tutorial.start(gameId);
+                }
+            } catch (err) {
+                showToast(err.message || 'Failed to load game', 'danger');
+            }
+        }
+
+        async function initMap() {
+            const el = document.getElementById('game-map');
+            worldMap = new WorldMap(el, {
+                onSelect: () => {},
+                onHover: () => {},
+            });
+            const me = await window.EOE.api.get('/api/auth/me');
+            const meId = me.user._id;
+            worldMap.setMe(meId);
+            const own = {};
+            own[myCountry.code] = { owner: meId, ownerUsername: me.user.username };
+            worldMap.setOwnership(own);
+            worldMap.select(myCountry.code);
+            // pan to player's country
+            const c = myCountry;
+            // WorldMap uses equirectangular viewBox; initial view already world-centered
+        }
+
+        btnEndTurn.addEventListener('click', async () => {
+            try {
+                const data = await window.EOE.api.post('/api/games/' + gameId + '/end-turn', {});
+                elTurn.textContent = data.currentTurn;
+                elYear.textContent = data.currentYear;
+                resTreasury.textContent = data.treasury.toLocaleString();
+                myCountry.treasury = data.treasury;
+                showToast('Turn ' + data.currentTurn + ' complete. Year ' + data.currentYear + '.');
+            } catch (err) {
+                showToast(err.message || 'Failed to end turn', 'danger');
+            }
+        });
+
+        btnDiplomacy.addEventListener('click', () => {
+            showToast('Diplomacy interface coming in a future update.');
+        });
+
+        btnLogout.addEventListener('click', () => { window.EOE.api.logout(); });
+        btnTutorialReplay.addEventListener('click', () => {
+            window.EOE.tutorial.replay(gameId);
+        });
+
+        (async () => {
+            await window.EOE.api.requireAuth();
+            if (!gameId) {
+                showToast('No game specified.', 'danger');
+                return;
+            }
+            await load();
+        })();
+    </script>
+</body>
+</html>

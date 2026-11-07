@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Era of Empires - Country Selection</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .map-wrap { position: relative; min-height: 0; }
+        .map-viewport { width: 100%; height: 100%; }
+        .country-list { max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg3); }
+        .country-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border2); cursor: pointer; transition: background 0.1s; }
+        .country-row:last-child { border-bottom: none; }
+        .country-row:hover { background: var(--bg4); }
+        .country-row.selected { background: #2a4a3a; border-color: var(--success); }
+        .country-row.taken { opacity: 0.6; }
+        .country-row .flag { font-size: 20px; }
+        .country-row .info { flex: 1; min-width: 0; }
+        .country-row .name { font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .country-row .code { font-size: 10px; color: var(--text3); text-transform: uppercase; }
+        .country-row .status { font-size: 11px; color: var(--text2); }
+        .country-row .btn { flex-shrink: 0; font-size: 11px; padding: 6px 10px; }
+        .map-hint { font-size: 11px; color: var(--text2); margin-bottom: 8px; }
+        .panel-title { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin: 0 0 10px 0; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <nav class="site-nav">
+            <a href="menu.html">Main Menu</a>
+        </nav>
+    </header>
+    <div class="page map-page">
+        <div class="map-wrap" id="map-wrap">
+            <div class="map-viewport" id="country-map"></div>
+            <div class="map-hint">Drag to pan | Scroll to zoom | Click a country on the map or in the list to select it. Grayed-out = taken.</div>
+        </div>
+        <div class="map-sidebar">
+            <div class="panel-title">Select Your Country</div>
+            <div id="no-selection" style="text-align:center;padding-top:20px">
+                <div style="font-size:32px">🌍</div>
+                <p style="color:var(--text2);margin-top:8px">Choose a country from the list or map below</p>
+            </div>
+            <div id="country-list" class="country-list" style="display:none"></div>
+            <div id="country-panel" class="country-panel" style="display:none"></div>
+            <div class="error" id="map-error" style="margin-bottom:12px"></div>
+        </div>
+    </div>
+    <script type="module">
+        import { WorldMap } from './js/worldmap.js';
+
+        const mapWrap = document.getElementById('map-wrap');
+        const mapEl = document.getElementById('country-map');
+        const noSelection = document.getElementById('no-selection');
+        const countryListEl = document.getElementById('country-list');
+        const countryPanel = document.getElementById('country-panel');
+        const mapError = document.getElementById('map-error');
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = urlParams.get('id');
+
+        let worldMap;
+        let countries = [];
+        let ownership = {};
+        let me = null;
+        let selectedCode = null;
+
+        function resizeMap() {
+            if (!worldMap) return;
+            const h = Math.max(400, window.innerHeight - mapWrap.offsetTop - 10);
+            mapEl.style.height = h + 'px';
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+        }
+
+        async function load() {
+            try {
+                const [countriesRes, ownershipRes] = await Promise.all([
+                    window.EOE.api.get('/api/countries'),
+                    window.EOE.api.get('/api/games/' + gameId + '/countries')
+                ]);
+                countries = countriesRes.countries || [];
+                ownership = {};
+                (ownershipRes.countries || []).forEach(c => { ownership[c.code] = c; });
+
+                const meRes = await window.EOE.api.get('/api/auth/me');
+                me = meRes.user._id;
+
+                // Build world map
+                worldMap = new WorldMap(mapEl, {
+                    onSelect: (code) => { selectCountry(code); },
+                    onHover: (code, c) => { /* tooltip handled by WorldMap */ },
+                });
+                worldMap.setMe(me);
+                worldMap.setOwnership(ownership);
+                resizeMap();
+
+                // Build country list
+                renderCountryList();
+            } catch (err) {
+                mapError.textContent = err.message || 'Failed to load countries';
+            }
+        }
+
+        function renderCountryList() {
+            countryListEl.innerHTML = '';
+            countries.forEach(c => {
+                const own = ownership[c.code];
+                const taken = !!own.owner;
+                const mine = taken && own.owner && own.owner.toString() === me;
+                const isSelected = selectedCode === c.code;
+
+                const row = document.createElement('div');
+                row.className = 'country-row' + (taken ? ' taken' : '') + (isSelected ? ' selected' : '');
+                row.innerHTML =
+                    '<span class="flag">' + c.flag + '</span>' +
+                    '<div class="info">' +
+                    '<div class="name">' + escapeHtml(c.name) + '</div>' +
+                    '<div class="code">' + c.code + '</div>' +
+                    '</div>' +
+                    '<div class="status">' + (mine ? 'Yours' : taken ? 'Taken' : 'Available') + '</div>';
+                if (!taken) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-accent';
+                    btn.textContent = 'Select';
+                    btn.onclick = (e) => { e.stopPropagation(); selectCountry(c.code); };
+                    row.appendChild(btn);
+                } else if (mine) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-secondary';
+                    btn.textContent = 'Confirm';
+                    btn.onclick = (e) => { e.stopPropagation(); confirmSelection(c.code); };
+                    row.appendChild(btn);
+                } else {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-secondary';
+                    btn.textContent = 'Taken';
+                    btn.disabled = true;
+                    row.appendChild(btn);
+                }
+                row.onclick = () => selectCountry(c.code);
+                countryListEl.appendChild(row);
+            });
+            countryListEl.style.display = 'block';
+            noSelection.style.display = 'none';
+        }
+
+        function selectCountry(code) {
+            if (selectedCode === code) return;
+            const own = ownership[code];
+            if (own && own.owner && own.owner.toString() !== me) return; // can't select another's country
+            selectedCode = code;
+            worldMap.select(code);
+            renderCountryList(); // refresh selection highlight
+            openCountryPanel(code);
+        }
+
+        function openCountryPanel(code) {
+            const own = ownership[code];
+            const c = countries.find(x => x.code === code);
+            if (!c) return;
+            const mine = own && own.owner && own.owner.toString() === me;
+            const taken = !!own.owner;
+
+            countryPanel.style.display = 'block';
+            countryPanel.innerHTML =
+                '<div class="country-panel"><header>' +
+                '<span class="country-flag">' + c.flag + '</span>' +
+                '<h2>' + escapeHtml(c.name) + '</h2>' +
+                '</header>' +
+                '<div class="meta">' +
+                (mine ? 'Your selected country' : 'Available') +
+                '</div>' +
+                '<div class="resource-row"><span class="label">Population</span><span class="value pos">' + c.population.toLocaleString() + 'M</span></div>' +
+                '<div class="resource-row"><span class="label">Treasury</span><span class="value pos">' + c.treasury.toLocaleString() + '</span></div>' +
+                '<div class="resource-row"><span class="label">Food</span><span class="value pos">' + c.food.toLocaleString() + '</span></div>' +
+                '<div class="resource-row"><span class="label">Oil</span><span class="value pos">' + c.oil.toLocaleString() + '</span></div>' +
+                '<div class="resource-row"><span class="label">Steel</span><span class="value pos">' + c.steel.toLocaleString() + '</span></div>' +
+                '<div class="resource-row"><span class="label">Gold</span><span class="value pos">' + c.gold.toLocaleString() + '</span></div>' +
+                '<div class="strength-row"><span class="label">Economic strength</span><span class="value">' + c.economicStrength + '</span></div>' +
+                '<div class="strength-row"><span class="label">Military strength</span><span class="value">' + c.militaryStrength + '</span></div>' +
+                '<div class="country-desc">' + escapeHtml(c.description) + '</div>' +
+                '<div class="country-actions"></div>' +
+                '</div>';
+            const actions = countryPanel.querySelector('.country-actions');
+            if (mine) {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-accent';
+                btn.textContent = 'Confirm Selection';
+                btn.addEventListener('click', () => confirmSelection(code));
+                actions.appendChild(btn);
+                const info = document.createElement('p');
+                info.style.fontSize = '11px';
+                info.style.color = 'var(--text2)';
+                info.style.marginTop = '8px';
+                info.textContent = 'This country is reserved for you.';
+                actions.appendChild(info);
+            } else if (taken) {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-secondary';
+                btn.textContent = 'Unavailable';
+                btn.disabled = true;
+                actions.appendChild(btn);
+            } else {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-accent';
+                btn.textContent = 'Select Country';
+                btn.addEventListener('click', () => selectCountry(code));
+                actions.appendChild(btn);
+            }
+        }
+
+        async function confirmSelection(code) {
+            mapError.textContent = '';
+            try {
+                await window.EOE.api.post('/api/games/' + gameId + '/select-country', { countryCode: code });
+                window.location.href = 'confirm-selection.html?id=' + gameId + '&country=' + code;
+            } catch (err) {
+                mapError.textContent = err.message || 'Failed to select country';
+            }
+        }
+
+        window.addEventListener('resize', resizeMap);
+
+        (async () => {
+            await window.EOE.api.requireAuth();
+            if (!gameId) {
+                mapError.textContent = 'No game specified.';
+                return;
+            }
+            await load();
+        })();
+    </script>
+</body>
+</html>

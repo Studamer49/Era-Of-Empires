@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Era of Empires - Main Menu</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="site-nav">
+            <a href="index.html">Start</a>
+            <a href="menu.html">Main Menu</a>
+            <a href="game.html">Game</a>
+            <a href="settings.html">Settings</a>
+            <a href="login.html">Logout</a>
+        </nav>
+    </header>
+    <div class="page">
+        <div class="page-body">
+            <h1 class="page-title">Era of Empires</h1>
+            <p class="page-subtitle">Command nations. Forge alliances. Build your empire.</p>
+
+            <div class="section">
+                <h2 class="section-title">Your Games</h2>
+                <div id="games-list" class="menu-grid"></div>
+                <div id="games-empty" class="empty-state" style="display:none">
+                    <h2>No games yet</h2>
+                    <p>Create a new game to get started.</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Quick Start</h2>
+                <div class="menu-actions">
+                    <button class="btn btn-accent" id="btn-new-game">Play / New Game</button>
+                    <button class="btn" id="btn-settings">Settings</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="menu-actions" style="justify-content:flex-end">
+                    <button class="btn btn-danger" id="btn-logout">Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/api.js"></script>
+    <script>
+        const gamesList = document.getElementById('games-list');
+        const gamesEmpty = document.getElementById('games-empty');
+        const btnNewGame = document.getElementById('btn-new-game');
+        const btnSettings = document.getElementById('btn-settings');
+        const btnLogout = document.getElementById('btn-logout');
+
+        let initialized = false;
+
+        async function loadGames() {
+            try {
+                const data = await window.EOE.api.get('/api/games');
+                renderGames(data.games || []);
+            } catch (err) {
+                console.error('Load games error:', err);
+                gamesList.innerHTML = '<div class="empty-state"><h2>Unable to load games</h2><p>Please log in again.</p></div>';
+            }
+        }
+
+        function renderGames(games) {
+            gamesList.innerHTML = '';
+            const active = games.filter(g => g.status === 'active' || g.status === 'country_selection');
+            const history = games.filter(g => g.status === 'completed' || g.status === 'abandoned');
+
+            if (games.length === 0) {
+                gamesEmpty.style.display = 'block';
+            } else {
+                gamesEmpty.style.display = 'none';
+            }
+
+            function card(g) {
+                const el = document.createElement('div');
+                el.className = 'menu-card' + (g.status === 'active' ? ' waiting' : '');
+                const statusLabel = {
+                    'country_selection': 'Awaiting country',
+                    'active': 'Active',
+                    'completed': 'Completed',
+                    'abandoned': 'Abandoned'
+                }[g.status] || g.status;
+                const canEnter = g.status === 'active' || g.status === 'country_selection';
+                el.innerHTML =
+                    '<div class="menu-badge ' + (canEnter ? 'active' : '') + '">' + statusLabel + '</div>' +
+                    '<h3>' + escapeHtml(g.name) + '</h3>' +
+                    '<p>Turn ' + g.currentTurn + ' &bull; Year ' + g.currentYear + ' &bull; ' + g.difficulty +
+                    (g.selectedCountry ? ' &bull; ' + escapeHtml(g.selectedCountry.name) : '') + '</p>' +
+                    '<div class="menu-actions" style="justify-content:center"></div>';
+                const actions = el.querySelector('.menu-actions');
+                if (canEnter) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-accent';
+                    btn.textContent = g.status === 'active' ? 'Continue' : 'Select Country';
+                    btn.addEventListener('click', () => {
+                        if (g.status === 'active') {
+                            window.location.href = 'gameplay.html?id=' + g._id;
+                        } else {
+                            window.location.href = 'country-selection.html?id=' + g._id;
+                        }
+                    });
+                    actions.appendChild(btn);
+                } else {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-secondary';
+                    btn.textContent = 'View';
+                    btn.disabled = true;
+                    actions.appendChild(btn);
+                }
+                return el;
+            }
+
+            const group = document.createDocumentFragment();
+            if (active.length) {
+                const h = document.createElement('div');
+                h.className = 'section-title';
+                h.textContent = 'Continue';
+                h.style.marginBottom = '10px';
+                group.appendChild(h);
+                active.forEach(g => group.appendChild(card(g)));
+            }
+            if (history.length) {
+                const h = document.createElement('div');
+                h.className = 'section-title';
+                h.textContent = 'Game History';
+                h.style.marginBottom = '10px';
+                group.appendChild(h);
+                history.forEach(g => group.appendChild(card(g)));
+            }
+            gamesList.appendChild(group);
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+        }
+
+        btnNewGame.addEventListener('click', () => { window.location.href = 'new-game.html'; });
+        btnSettings.addEventListener('click', () => { window.location.href = 'settings.html'; });
+        btnLogout.addEventListener('click', () => { window.EOE.api.logout(); });
+
+        (async () => {
+            const ok = await window.EOE.api.requireAuth();
+            if (!ok) return;
+            initialized = true;
+            loadGames();
+        })();
+    </script>
+</body>
+</html>

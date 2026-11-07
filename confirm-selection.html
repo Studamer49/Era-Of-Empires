@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Era of Empires - Confirm Selection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="site-nav">
+            <a href="menu.html">Main Menu</a>
+        </nav>
+    </header>
+    <div class="page">
+        <div class="page-body">
+            <h1 class="page-title">Confirm Your Country</h1>
+            <p class="page-subtitle">Review your selection before starting the game.</p>
+            <div id="confirm-error" class="error" style="display:none"></div>
+            <div id="confirm-card" class="form-card" style="max-width:560px">
+                <div id="confirm-loading" style="text-align:center;padding:40px">Loading...</div>
+                <div id="confirm-content" style="display:none">
+                    <div class="country-panel">
+                        <header style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                            <span class="country-flag" id="confirm-flag">🏁</span>
+                            <h2 id="confirm-name" style="font-size:20px;margin:0;color:var(--text)">Country</h2>
+                        </div>
+                        <div class="meta" id="confirm-code" style="font-size:11px;color:var(--text2);margin-bottom:14px">Code</div>
+                        <div class="resource-row"><span class="label">Population</span><span class="value pos" id="confirm-pop">0</span></div>
+                        <div class="resource-row"><span class="label">Treasury</span><span class="value pos" id="confirm-treasury">0</span></div>
+                        <div class="resource-row"><span class="label">Food</span><span class="value pos" id="confirm-food">0</span></div>
+                        <div class="resource-row"><span class="label">Oil</span><span class="value pos" id="confirm-oil">0</span></div>
+                        <div class="resource-row"><span class="label">Steel</span><span class="value pos" id="confirm-steel">0</span></div>
+                        <div class="resource-row"><span class="label">Gold</span><span class="value pos" id="confirm-gold">0</span></div>
+                        <div class="strength-row"><span class="label">Economic strength</span><span class="value" id="confirm-econ">0</span></div>
+                        <div class="strength-row"><span class="label">Military strength</span><span class="value" id="confirm-mil">0</span></div>
+                        <div class="country-desc" id="confirm-desc"></div>
+                    </div>
+                    <p style="font-size:11px;color:var(--text2);margin:16px 0 0 0">Once confirmed, this country is permanently yours for this game unless you restart or abandon it.</p>
+                    <div class="create-actions">
+                        <button type="button" class="btn" id="btn-back">Back</button>
+                        <button type="button" class="btn btn-accent" id="btn-start">Start Game</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/api.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = urlParams.get('id');
+        const countryCode = urlParams.get('country');
+        const card = document.getElementById('confirm-card');
+        const loading = document.getElementById('confirm-loading');
+        const content = document.getElementById('confirm-content');
+        const errorEl = document.getElementById('confirm-error');
+        const btnBack = document.getElementById('btn-back');
+        const btnStart = document.getElementById('btn-start');
+
+        btnBack.addEventListener('click', () => { window.location.href = 'country-selection.html?id=' + gameId; });
+
+        async function load() {
+            try {
+                const data = await window.EOE.api.get('/api/games/' + gameId);
+                const c = data.selectedCountry;
+                if (!c) {
+                    errorEl.textContent = 'No country selected. Please return to country selection.';
+                    errorEl.style.display = 'block';
+                    loading.style.display = 'none';
+                    return;
+                }
+                document.getElementById('confirm-flag').textContent = c.flag || '🏁';
+                document.getElementById('confirm-name').textContent = c.name;
+                document.getElementById('confirm-code').textContent = c.code;
+                document.getElementById('confirm-pop').textContent = (c.population || 0).toLocaleString() + 'M';
+                document.getElementById('confirm-treasury').textContent = (c.treasury || 0).toLocaleString();
+                document.getElementById('confirm-food').textContent = (c.food || 0).toLocaleString();
+                document.getElementById('confirm-oil').textContent = (c.oil || 0).toLocaleString();
+                document.getElementById('confirm-steel').textContent = (c.steel || 0).toLocaleString();
+                document.getElementById('confirm-gold').textContent = (c.gold || 0).toLocaleString();
+                document.getElementById('confirm-econ').textContent = c.economicStrength || 0;
+                document.getElementById('confirm-mil').textContent = c.militaryStrength || 0;
+                document.getElementById('confirm-desc').textContent = c.description || '';
+                loading.style.display = 'none';
+                content.style.display = 'block';
+            } catch (err) {
+                errorEl.textContent = err.message || 'Failed to load selection';
+                errorEl.style.display = 'block';
+                loading.style.display = 'none';
+            }
+        }
+
+        btnStart.addEventListener('click', async () => {
+            btnStart.disabled = true;
+            btnStart.textContent = 'Starting...';
+            try {
+                await window.EOE.api.post('/api/games/' + gameId + '/confirm', {});
+                window.location.href = 'gameplay.html?id=' + gameId;
+            } catch (err) {
+                errorEl.textContent = err.message || 'Failed to start game';
+                errorEl.style.display = 'block';
+                btnStart.disabled = false;
+                btnStart.textContent = 'Start Game';
+            }
+        });
+
+        (async () => {
+            await window.EOE.api.requireAuth();
+            if (!gameId) {
+                errorEl.textContent = 'No game specified.';
+                errorEl.style.display = 'block';
+                loading.style.display = 'none';
+                return;
+            }
+            await load();
+        })();
+    </script>
+</body>
+</html>

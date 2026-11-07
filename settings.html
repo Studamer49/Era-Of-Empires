@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Era of Empires - Settings</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="site-nav">
+            <a href="menu.html">Main Menu</a>
+            <a href="game.html">Game</a>
+            <a href="login.html">Logout</a>
+        </nav>
+    </header>
+    <div class="page">
+        <div class="page-body">
+            <h1 class="page-title">Settings</h1>
+            <p class="page-subtitle">Manage your account and tutorial progress.</p>
+
+            <div class="form-card" style="max-width:560px">
+                <div class="section">
+                    <h2 class="section-title">Account</h2>
+                    <div id="settings-account" style="font-size:13px;color:var(--text2)">Loading&hellip;</div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">Tutorial</h2>
+                    <p style="font-size:13px;color:var(--text2);margin-bottom:10px">Replay the interactive tutorial if you want to go through the introduction again.</p>
+                    <button class="btn btn-accent" id="btn-replay-tutorial">Replay Tutorial</button>
+                    <div id="settings-tutorial-status" style="margin-top:8px;font-size:11px;color:var(--text2)"></div>
+                </div>
+
+                <div class="section">
+                    <div class="menu-actions">
+                        <button class="btn btn-danger" id="btn-settings-logout">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/api.js"></script>
+    <script src="js/tutorial.js"></script>
+    <script>
+        const accountEl = document.getElementById('settings-account');
+        const statusEl = document.getElementById('settings-tutorial-status');
+        const btnReplay = document.getElementById('btn-replay-tutorial');
+        const btnLogout = document.getElementById('btn-settings-logout');
+
+        let currentGameId = null;
+
+        async function load() {
+            try {
+                const me = await window.EOE.api.get('/api/auth/me');
+                accountEl.innerHTML =
+                    '<div class="resource-row"><span class="label">Username</span><span class="value">' + escapeHtml(me.user.username) + '</span></div>' +
+                    '<div class="resource-row"><span class="label">Email</span><span class="value">' + escapeHtml(me.user.email) + '</span></div>';
+            } catch (err) {
+                accountEl.textContent = 'Unable to load account.';
+            }
+            try {
+                const games = await window.EOE.api.get('/api/games');
+                const list = games.games || [];
+                // Pick the most recent game with a tutorial (prefer active / not completed).
+                const tutorialGame = list.find(g => g.tutorialEnabled && !g.tutorialCompleted) || list[0];
+                currentGameId = tutorialGame ? tutorialGame._id : null;
+                if (tutorialGame) {
+                    const prog = await window.EOE.api.get('/api/tutorial?gameId=' + tutorialGame._id);
+                    statusEl.textContent = 'Tutorial for "' + escapeHtml(tutorialGame.name) + '": ' +
+                        (prog.progress && prog.progress.completed ? 'Completed' : 'Stage ' + (prog.progress && prog.progress.stage ? prog.progress.stage : 1));
+                } else {
+                    statusEl.textContent = 'No game found. Start a new game to play the tutorial.';
+                }
+            } catch (err) {
+                statusEl.textContent = 'Unable to load tutorial status.';
+            }
+        }
+
+        btnReplay.addEventListener('click', async () => {
+            if (!currentGameId) {
+                alert('Start a new game first to replay the tutorial.');
+                return;
+            }
+            btnReplay.disabled = true;
+            btnReplay.textContent = 'Replaying&hellip;';
+            try {
+                await window.EOE.api.post('/api/tutorial/reset', { gameId: currentGameId });
+                window.location.href = 'gameplay.html?id=' + currentGameId;
+            } catch (err) {
+                alert(err.message || 'Failed to replay tutorial');
+                btnReplay.disabled = false;
+                btnReplay.textContent = 'Replay Tutorial';
+            }
+        });
+
+        btnLogout.addEventListener('click', () => { window.EOE.api.logout(); });
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+        }
+
+        (async () => {
+            await window.EOE.api.requireAuth();
+            await load();
+        })();
+    </script>
+</body>
+</html>

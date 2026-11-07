@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Era of Empires - New Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="site-nav">
+            <a href="menu.html">Main Menu</a>
+            <a href="game.html">Game</a>
+            <a href="settings.html">Settings</a>
+        </nav>
+    </header>
+    <div class="page">
+        <div class="page-body">
+            <h1 class="page-title">New Game</h1>
+            <p class="page-subtitle">Configure your empire before choosing a country.</p>
+
+            <div class="form-card">
+                <form id="config-form">
+                    <div class="config-field">
+                        <label for="game-name">Game name</label>
+                        <input type="text" id="game-name" placeholder="My Empire" value="My Empire" maxlength="80">
+                    </div>
+
+                    <div class="config-field">
+                        <label for="game-mode">Game mode</label>
+                        <select id="game-mode" disabled>
+                            <option value="single_player">Single Player</option>
+                        </select>
+                        <p style="font-size:11px;color:var(--text2);margin-top:4px">Multiplayer coming soon.</p>
+                    </div>
+
+                    <div class="config-field">
+                        <label for="starting-year">Starting year</label>
+                        <select id="starting-year">
+                            <option value="1800">1800</option>
+                            <option value="1900">1900</option>
+                            <option value="2000">2000</option>
+                            <option value="2026">2026</option>
+                        </select>
+                    </div>
+
+                    <div class="config-field">
+                        <label>Difficulty</label>
+                        <div class="radio-group">
+                            <label class="radio-label"><input type="radio" name="difficulty" value="easy" checked> Easy</label>
+                            <label class="radio-label"><input type="radio" name="difficulty" value="normal"> Normal</label>
+                            <label class="radio-label"><input type="radio" name="difficulty" value="hard"> Hard</label>
+                        </div>
+                        <p style="font-size:11px;color:var(--text2);margin-top:4px">Easy grants bonus starting resources; Hard reduces them.</p>
+                    </div>
+
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="tutorial-enabled" checked>
+                        <label for="tutorial-enabled">Enable interactive tutorial (recommended for first-time players)</label>
+                    </div>
+
+                    <div class="error" id="create-error" style="display:none"></div>
+
+                    <div class="create-actions">
+                        <button type="button" class="btn" id="btn-back">Back</button>
+                        <button type="submit" class="btn btn-accent" id="btn-create">Create Game</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="js/api.js"></script>
+    <script>
+        const form = document.getElementById('config-form');
+        const errorEl = document.getElementById('create-error');
+        const btnCreate = document.getElementById('btn-create');
+        const btnBack = document.getElementById('btn-back');
+
+        btnBack.addEventListener('click', () => { window.location.href = 'menu.html'; });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorEl.style.display = 'none';
+            errorEl.textContent = '';
+            const name = document.getElementById('game-name').value.trim();
+            const mode = document.getElementById('game-mode').value;
+            const startingYear = document.getElementById('starting-year').value;
+            const difficulty = form.elements['difficulty'].value;
+            const tutorialEnabled = document.getElementById('tutorial-enabled').checked;
+
+            btnCreate.disabled = true;
+            btnCreate.textContent = 'Creating...';
+            try {
+                const data = await window.EOE.api.post('/api/games', {
+                    name, mode, startingYear, difficulty, tutorialEnabled
+                });
+                window.location.href = 'country-selection.html?id=' + data.game._id;
+            } catch (err) {
+                errorEl.textContent = err.message || 'Failed to create game';
+                errorEl.style.display = 'block';
+                btnCreate.disabled = false;
+                btnCreate.textContent = 'Create Game';
+            }
+        });
+
+        (async () => {
+            await window.EOE.api.requireAuth();
+        })();
+    </script>
+</body>
+</html>

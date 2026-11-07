@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Era of Empires - Game</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="site-nav">
+            <a href="index.html">Start</a>
+            <a href="game.html">Game</a>
+            <a href="login.html">Login</a>
+            <a href="about.html">About Us</a>
+            <a href="settings.html">Settings</a>
+        </nav>
+    </header>
+    <div class="landing">
+        <div class="landing-hero">
+            <h1>Era of Empires</h1>
+            <p class="subtitle">Placeholder - the game lobby is coming soon.</p>
+            <a href="login.html" class="play-btn">Start Playing</a>
+        </div>
+        <div id="map" style="height: 600px; width: 100%;"></div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '&copy; OpenStreetMap contributors'}).addTo(map);
+
+        const COUNTRIES = [
+            {name:'Sweden',flag:'\u{1F1F8}\u{1F1EA}',lat:59.33,lng:18.07,occupiedBy:null},
+            {name:'Mongolia',flag:'\u{1F1F2}\u{1F1F3}',lat:47.9,lng:106.9,occupiedBy:null},
+            {name: 'USA',flag:'\u{1F1FA}\u{1F1F8}',lat:39.8,lng:-98.6,occupiedBy:null},
+            {name: 'China',flag:'\u{1F1E8}\u{1F1F3}',lat:35.0,lng:104.0,occupiedBy:null},
+            {name: 'Russia',flag:'\u{1F1F7}\u{1F1FA}',lat:55.75,lng:37.6,occupiedBy:null},
+            {name: 'Argentina',flag:'\u{1F1E6}\u{1F1F7}',lat:-34.6,lng:-58.4,occupiedBy:null},
+            {name: 'Israel',flag:'\u{1F1EE}\u{1F1F1}',lat:31.77,lng:35.2,occupiedBy:null},
+            {name: 'North Korea',flag:'\u{1F1F0}\u{1F1F5}',lat:39.0,lng:125.8,occupiedBy:null},
+            {name: 'Australia',flag:'\u{1F1E6}\u{1F1FA}',lat:-35.3,lng:149.1,occupiedBy:null},
+            {name: 'Nigeria',flag:'\u{1F1F3}\u{1F1EC}',lat:9.06,lng:7.49,occupiedBy:null}
+        ];
+
+        COUNTRIES.forEach(c=>{
+            const occupied=c.occupiedBy?true:false;
+            const icon=L.divIcon({className:'era-country-marker',html:'<div style="font-size:22px;'+ (occupied?'opacity:0.55':'') +';">'+c.flag+'</div>',iconSize:[30,30],iconAnchor:[15,30]});
+            L.marker([c.lat,c.lng],{icon:icon}).addTo(map).bindPopup('<strong>'+c.flag+' '+c.name+'</strong><br/>'+ (occupied?'Occupied by <strong>'+c.occupiedBy+'</strong>':'Free / unclaimed'));
+        });
+    </script>
+</body>
+</html>
